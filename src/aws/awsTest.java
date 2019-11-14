@@ -6,11 +6,15 @@ import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.services.ec2.AmazonEC2;
 import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
+import com.amazonaws.services.ec2.model.AvailabilityZone;
+import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 import com.amazonaws.services.ec2.model.DescribeInstancesRequest;
 import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.services.ec2.model.DescribeRegionsResult;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.RebootInstancesRequest;
 import com.amazonaws.services.ec2.model.RebootInstancesResult;
+import com.amazonaws.services.ec2.model.Region;
 import com.amazonaws.services.ec2.model.Reservation;
 import com.amazonaws.services.ec2.model.StartInstancesRequest;
 import com.amazonaws.services.ec2.model.StopInstancesRequest;
@@ -66,9 +70,15 @@ while(true)
     case 1 :
         listInstances();
         break;
+    case 2 :
+        availableZones();
+        break;
     case 3 :
         startInstances();
         break;
+    case 4 :
+    	availableRegions();
+    	break;
     case 5 :
         stopInstances();
         break;
@@ -80,7 +90,7 @@ while(true)
 }
 
 
-
+// 1.
 public static void listInstances() {
 System.out.println("Listing instances....");
 boolean done = false;
@@ -112,7 +122,31 @@ while(!done) {
     }
 }
 
+// 2.
+public static void availableZones() {
+	int count = 0;
+	
+    final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
+    DescribeAvailabilityZonesResult zones_response = ec2.describeAvailabilityZones();
+
+    System.out.println("Available zones....");
+    for(AvailabilityZone zone : zones_response.getAvailabilityZones()) {
+        System.out.printf(
+        		"[id] %s, " +
+                "[region]   %s, " +
+                "[zone]     %s ",
+                zone.getZoneId(),
+                zone.getRegionName(),
+                zone.getZoneName());
+        System.out.println();
+        count++;
+    }
+    System.out.printf("You have access to %d Availability Zones.", count);
+    
+}
+
+// 3.
 public static void startInstances() {
     Scanner scanner = new Scanner(System.in);
     String instance_id ="";
@@ -128,7 +162,23 @@ public static void startInstances() {
         System.out.printf("Successfully started instance %s", instance_id);
 }
 
+// 4.
+public static void availableRegions() {
+	final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
+    DescribeRegionsResult regions_response = ec2.describeRegions();
+    System.out.println("Available regions....");
+    for(Region region : regions_response.getRegions()) {
+        System.out.printf(
+            "[region]	%s,	" +
+            "[endpoint]	%s",
+            region.getRegionName(),
+            region.getEndpoint());
+        System.out.println();
+    }
+}
+
+// 5.
 public static void stopInstances() {
     Scanner scanner = new Scanner(System.in);
     String instance_id ="";
@@ -144,7 +194,7 @@ public static void stopInstances() {
     ec2.stopInstances(Stop_request);
 }
 
-
+// 7.
 public static void rebootInstances() {
     Scanner scanner = new Scanner(System.in);
     String instance_id ="";
@@ -161,4 +211,5 @@ public static void rebootInstances() {
 
     System.out.printf("Successfully rebooted instance %s", instance_id);
 }
+
 } 
