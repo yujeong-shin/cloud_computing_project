@@ -11,12 +11,8 @@ import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 import com.amazonaws.services.ec2.model.AvailabilityZone;
 import com.amazonaws.services.ec2.model.CreateKeyPairRequest;
 import com.amazonaws.services.ec2.model.CreateKeyPairResult;
-import com.amazonaws.services.ec2.model.CreateTagsRequest;
-import com.amazonaws.services.ec2.model.CreateTagsResult;
 import com.amazonaws.services.ec2.model.DeleteKeyPairRequest;
 import com.amazonaws.services.ec2.model.DeleteKeyPairResult;
-import com.amazonaws.services.ec2.model.DeleteSecurityGroupRequest;
-import com.amazonaws.services.ec2.model.DeleteSecurityGroupResult;
 import com.amazonaws.services.ec2.model.DescribeAvailabilityZonesResult;
 import com.amazonaws.services.ec2.model.DescribeImagesRequest;
 import com.amazonaws.services.ec2.model.DescribeImagesResult;
@@ -30,6 +26,7 @@ import com.amazonaws.services.ec2.model.Image;
 import com.amazonaws.services.ec2.model.Instance;
 import com.amazonaws.services.ec2.model.InstanceType;
 import com.amazonaws.services.ec2.model.KeyPairInfo;
+import com.amazonaws.services.ec2.model.MonitorInstancesRequest;
 import com.amazonaws.services.ec2.model.RebootInstancesRequest;
 import com.amazonaws.services.ec2.model.RebootInstancesResult;
 import com.amazonaws.services.ec2.model.Region;
@@ -39,7 +36,8 @@ import com.amazonaws.services.ec2.model.RunInstancesResult;
 import com.amazonaws.services.ec2.model.SecurityGroup;
 import com.amazonaws.services.ec2.model.StartInstancesRequest;
 import com.amazonaws.services.ec2.model.StopInstancesRequest;
-import com.amazonaws.services.ec2.model.Tag;
+import com.amazonaws.services.ec2.model.TerminateInstancesRequest;
+import com.amazonaws.services.ec2.model.UnmonitorInstancesRequest;
 import com.amazonaws.services.ec2.model.Filter;
 
 public class awsTest {
@@ -47,48 +45,49 @@ public class awsTest {
 static AmazonEC2 ec2;
 
 private static void init() throws Exception {
-
-ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
-try {
-    credentialsProvider.getCredentials();
-    } catch (Exception e) {
-        throw new AmazonClientException(
-                        "Cannot load the credentials from the credential profiles file. " +
-                        "Please make sure that your credentials file is at the correct " +
-                        "location (~/.aws/credentials), and is in valid format.",
-                        e);
-        }
-ec2 = AmazonEC2ClientBuilder.standard()
-.withCredentials(credentialsProvider)
-.withRegion("us-east-1") /* check the region at AWS console */
-.build();
-}
+	ProfileCredentialsProvider credentialsProvider = new ProfileCredentialsProvider();
+	try {
+		credentialsProvider.getCredentials();
+		} catch (Exception e) {
+			throw new AmazonClientException(
+							"Cannot load the credentials from the credential profiles file. " +
+							"Please make sure that your credentials file is at the correct " +
+							"location (~/.aws/credentials), and is in valid format.",
+							e);
+			}
+	ec2 = AmazonEC2ClientBuilder.standard()
+			.withCredentials(credentialsProvider)
+			.withRegion("us-east-1") /* check the region at AWS console */
+			.build();
+	}
 
 
 public static void main(String[] args) throws Exception {
 init();
 Scanner menu = new Scanner(System.in);
-int number = 0; final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+int number = 0;
+final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
 
 while(true)
 {
     System.out.println(" ");
     System.out.println(" ");
-    System.out.println("------------------------------------------------------------");
+    System.out.println("----------------------------------------------------------------------");
     System.out.println(" Amazon AWS Control Panel using SDK ");
     System.out.println(" ");
     System.out.println(" Cloud Computing, Computer Science Department ");
     System.out.println(" at Chungbuk National University ");
-    System.out.println("------------------------------------------------------------");
-    System.out.println(" 1. list instance 2. available zones ");
-    System.out.println(" 3. start instance 4. available regions ");
-    System.out.println(" 5. stop instance 6. create instance ");
-    System.out.println(" 7. reboot instance 8. list images ");
-    System.out.println(" 9. list keypair 10. create keypair");
-    System.out.println(" 11. delete keypair 12. list security group ");
-    System.out.println(" 13. delete security group 99. quit");
-    System.out.println("------------------------------------------------------------");
+    System.out.println("----------------------------------------------------------------------");
+    System.out.println(" 1. list instance			2. available zones ");
+    System.out.println(" 3. start instance			4. available regions ");
+    System.out.println(" 5. stop instance			6. create instance ");
+    System.out.println(" 7. reboot instance			8. list images ");
+    System.out.println(" 9. terminate instance			10. start monitoring instance ");
+    System.out.println(" 11. stop monitoring instance		12. list keypair ");
+    System.out.println(" 13. create keypair			14. delete keypair");
+    System.out.println(" 15. list security group		99. quit ");
+    System.out.println("----------------------------------------------------------------------");
     System.out.print("Enter an integer: ");
     number = menu.nextInt();
    
@@ -118,19 +117,25 @@ while(true)
     	listImages();
         break;
     case 9 :
-    	listKeypair();
+    	terminateInstance();
     	break;
     case 10 :
-    	createKeypair();
+    	startMonitoringInstance();
     	break;
     case 11 :
-    	deleteKeypair();
+    	stopMonitoringInstance();
     	break;
     case 12 :
-    	listSecurityGroup();
+    	listKeypair();
     	break;
     case 13 :
-    	deleteSecurityGroup();
+    	createKeypair();
+    	break;
+    case 14 :
+    	deleteKeypair();
+    	break;
+    case 15 :
+    	listSecurityGroup();
     	break;
     case 99 :
     	quit();
@@ -141,23 +146,21 @@ while(true)
     }
 }
 
-
-
 // 1.
 public static void listInstances() {
 System.out.println("Listing instances....");
 boolean done = false;
 
-DescribeInstancesRequest DI_request = new DescribeInstancesRequest();
+DescribeInstancesRequest describeinstancesrequest = new DescribeInstancesRequest();
 while(!done) {
-    DescribeInstancesResult DI_response = ec2.describeInstances(DI_request);
-    for(Reservation reservation : DI_response.getReservations()) {
+    DescribeInstancesResult describeinstancesresult = ec2.describeInstances(describeinstancesrequest);
+    for(Reservation reservation : describeinstancesresult.getReservations()) {
         for(Instance instance : reservation.getInstances()) {
             System.out.printf(
                             "[id] %s, " +
                             "[AMI] %s, " +
                             "[type] %s, " +
-                            "[state] %10s, " +
+                            "[state] %s, " +
                             "[monitoring state] %s",
                             instance.getInstanceId(),
                             instance.getImageId(),
@@ -167,9 +170,9 @@ while(!done) {
             }
         System.out.println();
         }
-    DI_request.setNextToken(DI_response.getNextToken());
+    describeinstancesrequest.setNextToken(describeinstancesresult.getNextToken());
    
-    if(DI_response.getNextToken() == null) {
+    if(describeinstancesresult.getNextToken() == null) {
         done = true;
         }
     }
@@ -178,17 +181,14 @@ while(!done) {
 // 2.
 public static void availableZones() {
 	int count = 0;
-	
-    //final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
-
-    DescribeAvailabilityZonesResult DAZ_response = ec2.describeAvailabilityZones();
+    DescribeAvailabilityZonesResult describeavailabilityzonesresult = ec2.describeAvailabilityZones();
 
     System.out.println("Available zones....");
-    for(AvailabilityZone zone : DAZ_response.getAvailabilityZones()) {
+    for(AvailabilityZone zone : describeavailabilityzonesresult.getAvailabilityZones()) {
         System.out.printf(
         		"[id] %s, " +
-                "[region]   %s, " +
-                "[zone]     %s ",
+                "[region] %s, " +
+                "[zone] %s ",
                 zone.getZoneId(),
                 zone.getRegionName(),
                 zone.getZoneName());
@@ -207,21 +207,18 @@ public static void startInstances() {
     System.out.print("Enter instance id: ");
     instance_id = scanner.next();
        
-    StartInstancesRequest SI_request = new StartInstancesRequest()
+    StartInstancesRequest startinstancesrequest = new StartInstancesRequest()
                 .withInstanceIds(instance_id);
 
-        ec2.startInstances(SI_request);
-
+        ec2.startInstances(startinstancesrequest);
         System.out.printf("Successfully started instance %s", instance_id);
 }
 
 // 4.
 public static void availableRegions() {
-	//final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
-
-    DescribeRegionsResult DR_response = ec2.describeRegions();
+    DescribeRegionsResult describeregionsresult = ec2.describeRegions();
     System.out.println("Available regions....");
-    for(Region region : DR_response.getRegions()) {
+    for(Region region : describeregionsresult.getRegions()) {
         System.out.printf(
             "[region]	%s,	" +
             "[endpoint]	%s",
@@ -238,53 +235,39 @@ public static void stopInstances() {
    
     System.out.print("Enter instance id: ");
     instance_id = scanner.next();
-   
-    final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
-    StopInstancesRequest SI_request = new StopInstancesRequest()
+    StopInstancesRequest stopinstancesrequest = new StopInstancesRequest()
         .withInstanceIds(instance_id);
 
-    ec2.stopInstances(SI_request);
+    ec2.stopInstances(stopinstancesrequest);
+    System.out.printf("Successfully stopped instance %s", instance_id);
 }
 
 // 6.
 public static void createInstances() {
 	Scanner scanner = new Scanner(System.in);
     String ami_id ="";
-    //String name = "java-test";
+    String key_name = "";
     
     System.out.print("Enter ami id: ");
     ami_id = scanner.next();
+    System.out.print("Enter key name: ");
+    key_name = scanner.next();
 
         final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
-        RunInstancesRequest run_request = new RunInstancesRequest()
+        RunInstancesRequest runinstancesrequest = new RunInstancesRequest()
             .withImageId(ami_id)
             .withInstanceType(InstanceType.T2Micro)
             .withMaxCount(1)
             .withMinCount(1)
-            .withKeyName("cloud-test");
+            .withKeyName(key_name);
         
 
-        RunInstancesResult run_response = ec2.runInstances(run_request);
+        RunInstancesResult runinstancesresult = ec2.runInstances(runinstancesrequest);
 
-        String reservation_id = run_response.getReservation().getInstances().get(0).getInstanceId();
-
-        /*
-        Tag tag = new Tag()
-            .withKey("Name")
-            .withValue(name);
-
-        CreateTagsRequest tag_request = new CreateTagsRequest()
-            .withTags(tag);
-
-        CreateTagsResult tag_response = ec2.createTags(tag_request);
-
-        */
-        	System.out.printf(
-            "Successfully started EC2 instance %s based on AMI %s",
-            reservation_id, ami_id);
-    	
+        String reservation_id = runinstancesresult.getReservation().getInstances().get(0).getInstanceId();
+       	System.out.printf("Successfully started EC2 instance %s based on AMI %s", reservation_id, ami_id);    	
 }
 
 // 7.
@@ -294,41 +277,36 @@ public static void rebootInstances() {
    
     System.out.print("Enter instance id: ");
     instance_id = scanner.next();
-   
-    //final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
-
-    RebootInstancesRequest RI_request = new RebootInstancesRequest()
+    
+    RebootInstancesRequest rebootinstancesrequest = new RebootInstancesRequest()
         .withInstanceIds(instance_id);
 
-    RebootInstancesResult response = ec2.rebootInstances(RI_request);
+    RebootInstancesResult rebootinstancesresult = ec2.rebootInstances(rebootinstancesrequest);
 
     System.out.printf("Successfully rebooted instance %s", instance_id);
 }
 
 // 8.
 public static void listImages() {
-	//final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 	System.out.println("Listing images....");
-	DescribeImagesRequest describeImagesRequest = new DescribeImagesRequest();
+	DescribeImagesRequest describeimagesrequest = new DescribeImagesRequest();
 	
 	List<Filter> filters = new ArrayList<>();
 	Filter filter = new Filter();
 	filter.setName("is-public");
-
 	
 	 List<String> values = new ArrayList<>();
 	 values.add("false");
 	 filter.setValues(values);
 	 	 
 	 filters.add(filter);
-	 
-	 describeImagesRequest.setFilters(filters);
+	 describeimagesrequest.setFilters(filters);
 
 	 
-	 DescribeImagesResult describeImagesResult = ec2.describeImages(describeImagesRequest);	
-	 for(Image images :describeImagesResult.getImages()){
-			System.out.printf("[ImageID] %s,	" +
-	        					"[Name] %s,	" +
+	 DescribeImagesResult describeimagesresult = ec2.describeImages(describeimagesrequest);	
+	 for(Image images :describeimagesresult.getImages()){
+			System.out.printf("[ImageID] %s, " +
+	        					"[Name] %s, " +
 	        					"[Owner] %s",
 	        					images.getImageId(),
 	        					images.getName(),
@@ -337,21 +315,69 @@ public static void listImages() {
     }
 
 // 9.
+public static void terminateInstance() {
+	Scanner scanner = new Scanner(System.in);
+	String instance_id = "";
+	
+	System.out.print("Enter instance id: ");
+	instance_id = scanner.next();
+	
+    TerminateInstancesRequest terminateInstancesRequest = new TerminateInstancesRequest()
+            .withInstanceIds(instance_id);
+    
+    ec2.terminateInstances(terminateInstancesRequest)
+            .getTerminatingInstances()
+            .get(0)
+            .getPreviousState()
+            .getName();
+    
+    System.out.println("The Instance is terminated with id: "+ instance_id);
+}
+
+// 10.
+public static void startMonitoringInstance() {
+	 Scanner scanner = new Scanner(System.in);
+	    String instance_id ="";
+	   
+	    System.out.print("Enter instance id: ");
+	    instance_id = scanner.next();
+	    
+	MonitorInstancesRequest monitorinstancesrequest = new MonitorInstancesRequest()
+	        .withInstanceIds(instance_id);
+
+	ec2.monitorInstances(monitorinstancesrequest);
+	System.out.printf("Successfully enabled monitoring for instance %s", instance_id);
+}
+
+// 11.
+public static void stopMonitoringInstance() {
+	Scanner scanner = new Scanner(System.in);
+    String instance_id ="";
+   
+    System.out.print("Enter instance id: ");
+    instance_id = scanner.next();
+    
+	UnmonitorInstancesRequest unmonitorinstancesrequest = new UnmonitorInstancesRequest()
+		    .withInstanceIds(instance_id);
+
+		ec2.unmonitorInstances(unmonitorinstancesrequest);
+		System.out.printf("Successfully disabled monitoring for instance %s", instance_id);
+}
+
+// 12.
 public static void listKeypair() {
-	final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
+    DescribeKeyPairsResult describekeypairsresult = ec2.describeKeyPairs();
 
-    DescribeKeyPairsResult response = ec2.describeKeyPairs();
-
-    for(KeyPairInfo key_pair : response.getKeyPairs()) {
+    for(KeyPairInfo key_pair : describekeypairsresult.getKeyPairs()) {
         System.out.printf(
-            "Found key pair with name %s " +
-            "and fingerprint %s \n",
+            "[Keyname] %s	" +
+            "[fingerprint] %s \n",
             key_pair.getKeyName(),
             key_pair.getKeyFingerprint());
     }
 }
 
-// 10.
+// 13.
 public static void createKeypair() {
 	Scanner scanner = new Scanner(System.in);
 	String key_id ="";
@@ -359,18 +385,16 @@ public static void createKeypair() {
 	
 	System.out.print("Enter key name: ");
     key_name = scanner.next();
-    
-    final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
 
-    CreateKeyPairRequest request = new CreateKeyPairRequest()
+    CreateKeyPairRequest createkeypairrequest = new CreateKeyPairRequest()
         .withKeyName(key_name);
 
-    CreateKeyPairResult response = ec2.createKeyPair(request);
+    CreateKeyPairResult createkeypairresult = ec2.createKeyPair(createkeypairrequest);
 
     System.out.printf("Successfully created key pair named %s", key_name);
 }
 
-// 11.
+// 14.
 public static void deleteKeypair() {
 	Scanner scanner = new Scanner(System.in);
 	String key_id ="";
@@ -379,65 +403,39 @@ public static void deleteKeypair() {
 	System.out.print("Enter key name: ");
     key_name = scanner.next();
 
-     final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
-
-     DeleteKeyPairRequest request = new DeleteKeyPairRequest()
+     DeleteKeyPairRequest deletekeypairrequest = new DeleteKeyPairRequest()
          .withKeyName(key_name);
 
-     DeleteKeyPairResult response = ec2.deleteKeyPair(request);
+     DeleteKeyPairResult deletekeypairresult = ec2.deleteKeyPair(deletekeypairrequest);
 
-     System.out.printf(
-         "Successfully deleted key pair named %s", key_name);
+     System.out.printf("Successfully deleted key pair named %s", key_name);
 }
 
-// 12.
+// 15.
 public static void listSecurityGroup() {
 	String group_id = "";
 
-    final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
-
-    DescribeSecurityGroupsRequest request =
-        new DescribeSecurityGroupsRequest()
+    DescribeSecurityGroupsRequest describesecuritygroupsrequest = new DescribeSecurityGroupsRequest()
             .withGroupIds(group_id);
 
-    DescribeSecurityGroupsResult response =
-        ec2.describeSecurityGroups(request);
+    DescribeSecurityGroupsResult describesecuritygroupsresult = ec2.describeSecurityGroups(describesecuritygroupsrequest);
 
-    for(SecurityGroup group : response.getSecurityGroups()) {
+    for(SecurityGroup group : describesecuritygroupsresult.getSecurityGroups()) {
         System.out.printf(
-            "Found security group with id %s, " +
-            "vpc id %s " +
-            "and description %s \n",
+            "[id] %s	" +
+            "[vpc id] %s	" +
+            "[description] %s	" +
+            "[name] %s \n",
             group.getGroupId(),
             group.getVpcId(),
-            group.getDescription());
+            group.getDescription(),
+            group.getGroupName());
     }
 }
 
-// 13.
-public static void deleteSecurityGroup() {
-	Scanner scanner = new Scanner(System.in);
-	String group_name = "";
-	
-	System.out.print("Enter securitygroup name: ");
-	group_name = scanner.next();
-
-    final AmazonEC2 ec2 = AmazonEC2ClientBuilder.defaultClient();
-
-    DeleteSecurityGroupRequest request = new DeleteSecurityGroupRequest()
-        .withGroupId(group_name);
-
-    DeleteSecurityGroupResult response = ec2.deleteSecurityGroup(request);
-
-    System.out.printf(
-        "Successfully deleted security group with id %s", group_name);
-}
- 
-//99.
+// 99.
 public static void quit() {
 	System.out.println("exit...");
 	System.exit(0);
 }
-
-
 } 
